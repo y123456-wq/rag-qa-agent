@@ -14,3 +14,8 @@ sentence-transformers>=2.5.0
 # 工具库
 python-multipart>=0.0.9
 numpy>=1.24.0
+
+# MCP 服务层（Model Context Protocol）
+# 只跑 MCP 服务时可只装 requirements-mcp.txt
+# 兼容 SDK 1.x（FastMCP）与 2.x（MCPServer）
+mcp>=1.10.0

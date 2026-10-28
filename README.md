@@ -8,10 +8,14 @@
 - 🧠 **智能知识库构建**：自动文本分割、向量化存储，构建专属知识库
 - 🔍 **语义检索**：基于向量相似度的语义检索，精准定位相关内容
 - 🤖 **Agent式对话**：采用ReAct模式的智能Agent，自主决策调用工具
+- 🔌 **MCP 双向接入**：既能作为 MCP Server 被 Claude Desktop / Cursor 调用，
+  也能作为 MCP Client 反向调用社区里的任意 MCP 服务器（如 bili-subtitle-mcp）
 - 💬 **多轮对话**：支持上下文记忆，实现流畅的多轮对话体验
 - 🎨 **图形界面**：基于Gradio的友好界面，操作简单直观
 - ⚙️ **灵活配置**：支持多种大模型API，支持API/本地两种Embedding方式
+- 🛡️ **确定性降级**：无 API Key 时走抽取式兜底答案，离线可演示、结果可复现
 - 📊 **可解释性**：支持查看Agent思考过程和回答来源
+- ✅ **可回归**：55 个单元测试覆盖工具层、MCP 服务层与真实 stdio 端到端链路
 
 ## 🛠️ 技术栈
 
@@ -23,6 +27,7 @@
 | Gradio | 图形界面框架 |
 | OpenAI API | 大模型API（兼容所有OpenAI格式的API） |
 | sentence-transformers | 开源Embedding模型（可选） |
+| **MCP (Model Context Protocol)** | **把知识库标准化暴露给任意 AI 客户端；SDK 1.x/2.x 双版本兼容** |
 
 ## 🏗️ 系统架构
 
@@ -153,16 +158,25 @@ rag-agent-project/
 │   ├── vector_store.py          # 向量数据库模块
 │   ├── chat_history.py          # 对话历史管理模块
 │   ├── rag_chain.py             # RAG问答链模块
-│   └── agent.py                 # Agent核心模块
+│   ├── agent.py                 # Agent核心模块
+│   ├── mcp_tools.py             # MCP工具层（纯业务逻辑，零依赖、可单测）
+│   ├── mcp_server.py            # MCP服务层（工具注册 / Schema 契约 / 三种传输）
+│   └── mcp_client.py            # MCP客户端适配层（反向调用外部 MCP 服务器）
 ├── examples/                     # 示例文档
 │   ├── RAG技术介绍.txt
 │   ├── AI_Agent技术介绍.txt
 │   └── LangChain框架介绍.txt
+├── tests/                        # 单元测试
+│   ├── test_mcp_tools.py        # 工具层：输入校验、检索、降级、协议兼容
+│   ├── test_mcp_server.py       # 服务层：工具注册、Schema 契约、端到端行为
+│   └── test_mcp_client.py       # 客户端：入参解析 + 真实子进程 stdio 端到端
 ├── data/                        # 数据存储目录
 │   ├── vector_db/               # 向量数据库存储
 │   └── temp/                    # 临时文件存储
 ├── app.py                       # Gradio界面主程序
-├── requirements.txt             # 依赖包列表
+├── run_mcp_server.py            # MCP 服务器启动脚本
+├── requirements.txt             # 完整依赖（含 RAG 主程序）
+├── requirements-mcp.txt         # 只跑 MCP 服务层的最小依赖
 ├── .env.example                 # 环境变量示例
 ├── .gitignore                   # Git忽略文件
 └── README.md                    # 项目说明文档
@@ -189,6 +203,90 @@ rag-agent-project/
 - **刷新状态**：查看最新的知识库信息
 - **清空知识库**：删除所有知识库内容
 - **清空对话历史**：重置对话上下文
+
+## 🔌 MCP 服务层（Model Context Protocol）
+
+> 这一段是本项目相对"课程作业"最有区别度的部分：**把私有的 RAG 能力变成一个标准协议节点**。
+> 改造前它是一个只能在自己的 Gradio 页面里用的问答脚本；
+> 改造后，任何支持 MCP 的 AI 客户端（Claude Desktop、Cursor、Claude Code、Continue）
+> 都能直接调用它，它也能反过来调用别人的 MCP 服务器。
+
+### 作为 Server：被 AI 客户端调用
+
+暴露三个工具：
+
+| 工具 | 入参 | 说明 |
+|------|------|------|
+| `search_knowledge_base` | `query`(必填), `top_k`(1–20，默认3) | 语义检索，返回原文片段 + 出处 + 相似度分数 |
+| `ask_knowledge_base` | `question`(必填), `top_k` | 带引用的问答；有 LLM 走生成式答案，无 LLM 走确定性原文摘录 |
+| `knowledge_base_stats` | 无 | 知识库规模、来源列表、检索方式 |
+
+三步跑起来（**不需要 Chroma、不需要 Embedding、不需要 API Key**）：
+
+```bash
+pip install -r requirements-mcp.txt
+python run_mcp_server.py --demo        # 演示模式：内置示例文档
+```
+
+然后在 MCP 客户端里注册（以 Claude Desktop 的 `claude_desktop_config.json` 为例）：
+
+```json
+{
+  "mcpServers": {
+    "rag-kb": {
+      "command": "python",
+      "args": ["E:/求职/github_upload/rag-qa-agent/run_mcp_server.py", "--demo"],
+      "env": { "RAG_MCP_DEMO": "1" }
+    }
+  }
+}
+```
+
+接真实知识库时去掉 `--demo` 即可（会用 Chroma 里已导入的文档）；再加 `--with-llm`
+就会接入 LLM 生成自然语言答案，否则始终用抽取式兜底答案。
+
+也支持非 stdio 传输，方便自建客户端或远端调用：
+
+```bash
+python run_mcp_server.py --demo --transport streamable-http --port 8765
+```
+
+### 作为 Client：反向调用别人的 MCP 服务器
+
+`src/mcp_client.py` 把外部 MCP 服务器的工具即时接入本地 ReAct Agent 的工具池，
+**接入一个新的 MCP 服务器不需要改任何代码**——运行时拉取对端的 `tools/list`，
+自动转成 LangChain `Tool`：
+
+```python
+from src.mcp_client import MCPServerConfig, MCPToolBridge
+
+bridge = MCPToolBridge(config=MCPServerConfig(
+    command="bili-subtitle-mcp",          # 社区里的任意 MCP server
+    args=[],
+))
+remote_tools = bridge.connect()           # initialize + tools/list
+tools = bridge.to_langchain_tools()       # 直接塞进 AgentExecutor
+```
+
+### 设计要点
+
+| 问题 | 做法 |
+|------|------|
+| 工具层如何做到零依赖可测 | **依赖倒置**：检索能力抽象成 `Retriever` 协议注入，测试用假实现，不碰向量库 |
+| 没有 LLM 时工具还能用吗 | **确定性降级**：抽取式兜底答案，结果可复现，且 LLM 报错时自动回退 |
+| MCP stdio 会话怎么管 | **单一常驻 task 持有会话**：anyio task group 的 enter/exit 必须在同一 task，否则关闭时抛 `Attempted to exit cancel scope in a different task` |
+| 模型乱填参数怎么办 | 双重防线：手写 JSON Schema 声明契约 + 运行期入参净化（`top_k` 夹到 1–20，空 query 拒绝） |
+| SDK 升级会炸吗 | `src/mcp_server.py` 做了 1.x/2.x 兼容层（`FastMCP` → `MCPServer`），`inputSchema`/`input_schema` 字段名差异也一并处理 |
+| 失败会不会拖垮 Agent | 工具层异常统一转成给模型看的中文错误文本，不抛到外层 |
+
+### 测试
+
+```bash
+python -m unittest discover -s tests        # 55 个用例
+```
+
+其中 `tests/test_mcp_client.py` 里的 `TestStdioEndToEnd` 会**真的拉起一个子进程**
+走完 `initialize → tools/list → tools/call`，而不是只 mock 一下。
 
 ## 🌟 技术亮点
 

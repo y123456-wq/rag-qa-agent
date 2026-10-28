@@ -1,0 +1,8 @@
+# MCP 服务层所需的最小依赖
+#
+# 只需要装这一个文件，就可以把本仓库当成一个 MCP server 跑起来（演示模式），
+# 不需要 Chroma、不需要 Embedding、不需要任何 API Key。
+#
+# 说明：MCP Python SDK 在 2.0 起把 FastMCP 更名为 MCPServer，
+# src/mcp_server.py 里做了兼容层，1.x / 2.x 都能跑。
+mcp>=1.10.0

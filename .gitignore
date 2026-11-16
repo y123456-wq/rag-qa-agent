@@ -21,3 +21,7 @@ traces/
 .vscode/
 .idea/
 .DS_Store
+
+# eval artifacts
+evals/runs/
+evals/reports/

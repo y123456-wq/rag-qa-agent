@@ -1,0 +1,4 @@
+# 回归评测基线依赖（与主项目依赖分离，评测不需要 LLM/Chroma）。
+# 注意：该 git 依赖在 pocketflow-tracekit 仓库公开 push 之后才可解析；
+# 本地开发可改用 PYTHONPATH 指向 tracekit 源码目录。
+pocketflow-tracekit @ git+https://github.com/y123456-wq/pocketflow-tracekit.git

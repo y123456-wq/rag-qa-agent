@@ -1,6 +1,6 @@
 # 🤖 RAG智能问答Agent
 
-基于RAG（检索增强生成）技术的智能问答Agent系统，支持文档上传、知识库构建、多轮对话和Agent式智能推理。采用模块化工程化设计，代码清晰易懂，适合作为课程项目和求职作品集。
+基于RAG（检索增强生成）技术的智能问答Agent系统，支持文档上传、知识库构建、多轮对话和Agent式智能推理。采用模块化工程化设计，代码清晰易懂，核心流程与 MCP 协议层均有单元测试覆盖。
 
 ## ✨ 功能特性
 
@@ -206,10 +206,9 @@ rag-agent-project/
 
 ## 🔌 MCP 服务层（Model Context Protocol）
 
-> 这一段是本项目相对"课程作业"最有区别度的部分：**把私有的 RAG 能力变成一个标准协议节点**。
-> 改造前它是一个只能在自己的 Gradio 页面里用的问答脚本；
-> 改造后，任何支持 MCP 的 AI 客户端（Claude Desktop、Cursor、Claude Code、Continue）
-> 都能直接调用它，它也能反过来调用别人的 MCP 服务器。
+> **把私有的 RAG 能力变成一个标准协议节点**：任何支持 MCP 的 AI 客户端
+> （Claude Desktop、Cursor、Claude Code、Continue）都能直接调用它，
+> 它也能反过来调用别人的 MCP 服务器。
 
 ### 作为 Server：被 AI 客户端调用
 
@@ -235,7 +234,7 @@ python run_mcp_server.py --demo        # 演示模式：内置示例文档
   "mcpServers": {
     "rag-kb": {
       "command": "python",
-      "args": ["E:/求职/github_upload/rag-qa-agent/run_mcp_server.py", "--demo"],
+      "args": ["run_mcp_server.py", "--demo"],
       "env": { "RAG_MCP_DEMO": "1" }
     }
   }
@@ -323,22 +322,8 @@ python -m unittest discover -s tests        # 55 个用例
 - 环境变量配置，敏感信息不硬编码
 - 完整的文档说明，易于上手
 
-## 💼 求职相关
+## Roadmap
 
-这个项目可以很好地体现在AI应用开发方面的能力，适合放在求职作品集里：
-
-### 体现的技术能力
-- ✅ 大语言模型应用开发（LLM Application）
-- ✅ RAG检索增强生成技术
-- ✅ 向量数据库与语义检索
-- ✅ AI Agent开发（ReAct模式）
-- ✅ Prompt工程
-- ✅ LangChain框架使用
-- ✅ Python工程化开发
-- ✅ 模块化设计与架构设计
-- ✅ 图形界面开发
-
-### 可以扩展的方向
 - 加入更多工具（搜索引擎、计算器、代码解释器等）
 - 支持更多文档格式（Word、PPT、Markdown等）
 - 加入重排序（Rerank）提升检索效果
@@ -366,5 +351,4 @@ MIT License
 
 ---
 
-**项目作者**：程序设计实践课程项目
 **版本**：v1.0.0
